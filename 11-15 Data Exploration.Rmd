@@ -1,7 +1,7 @@
 ---
 title: "DataScience Capstone Project"
 author: "Missy Lee"
-date: "11/15/2016"
+date: "11/19/2016"
 output: word_document
 ---
 
@@ -10,21 +10,17 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(lazyeval)
-library(flexclust)
-library(cluster)
-library(NbClust)
 ```
 
  
 ## Introduction
 
-After recently closing our second fundraising campaign, we need to identify new potential major gift donors ahead of the next campaign.  Major gifts are sought, not only to provide funding for buildings, scholarships, professorships and other initiatives but also attract other gifts.  A major gift donor is currently defined as one who has the capacity to make a $25,000 gift.  How can what we know about people who gave before be used to identify those who may give in the future?  What characteristics can be identified and used to find currently unknown prospects?  Do they currently give in smaller amounts (less than $25,000)?  And if that is the case, is there a factor that converts someone from giving smaller amounts to giving more?
+After recently closing our second fundraising campaign, we need to identify new potential major gift donors ahead of the next campaign.  Major gifts are sought, not only to provide funding for buildings, scholarships, professorships and other initiatives but also attract other gifts.  A major gift donor is currently defined as one who has the capacity to make a $25,000 gift.  How can what we know about people who gave before be used to identify those who may give in the future?  What characteristics can be identified and used to find currently unknown prospects?  Do they currently give in smaller amounts (less than $25,000)?  And if that is the case, is there a factor that converts someone from giving smaller amounts to giving more? 
 
-State funding has declined over the past decade at the same time as the need for new facilities and programs has increased.  Private philanthropy is looked upon to help fill the funding gap.  We have very loyal and generous alumni who made the last campaign a success by donating very large amounts.  These people may not have the inclination or financial ability to make similar gifts in the next campaign.  Results from this and future analytical efforts will be used to identify people who may be likely major gift donors, but who are presently not identified as major gift prospects.  
+We can only try to answer these questions using the data already collected in the donor database.  This study will explore a few variables to see how they might be used to model donor giving.  The variables will be discussed in turn.  The goal of this project is to examine how these selected variables influence lifetime giving among this group of donors and to evaluate their use in a regression model.  
 
-The dataset for this study was randomly sampled for 3036 individuals from a large database of known and potential donors. The variables chosen for this study were those easy to extract from the donor database without too much manipulation and have been shown in other studies to have some relationship to lifetime giving.  
+The dataset for this study is comprised of randomly sampled from a large database of known and potential donors. The variables chosen for this study were those easy to extract from the donor database without too much manipulation and have been shown in other studies to have some relationship to lifetime giving.  
 
-The variables will be discussed in turn.  The goal of this project is to examine how these selected variables influence lifetime giving among this group of donors and to evaluate their use in a regression model.  
 
 ```{r}
 TS <- read.csv("~/GitHub/Mlee-Data-Science-Capstone-Project/TS.csv", header=TRUE)
@@ -34,17 +30,28 @@ str (TS)
 
 ###Lifetime Giving  
 
-In order to show a normal distribution, the Lifetime Giving data needed to be log10 transformed.  
+Lifetime Giving will be used as the dependent variable in this study.  The values represented by this variable range from $0 to over $9,000,000.  This range makes creating a histogram to show the distribution unweildy.  
+
+```{r echo=FALSE}
+summary(TS$WSU.LIFETIME.GIVING)
+```
+If the variable values are restricted to between $1,000 and $5,000,000 a histogram can be generated that shows the distribution of this varible is far from normal.
+ 
+```{r echo=FALSE}
+TS1 <- TS$WSU.LIFETIME.GIVING[TS$WSU.LIFETIME.GIVING>1000 & TS$WSU.LIFETIME.GIVING<5000000] 
+hist(TS1, breaks=100, main="Lifetime Giving Distribution", xlab="Giving in Dollars")
+```
+
+Many of the methods I intend to use require that the data be normally distributed.  By transforming this data using a log10 transform, the data takes on a normal distribution.  This transformed data will be easier to visualize since the data points will now be spread more uniformly in graphs. It will also be possible to capture linear relationships using linear regression with this transformed data.
 ```{r}
  TS$logGiving <- log10(TS$WSU.LIFETIME.GIVING)
 summary(TS$logGiving)
 ```
 
 ```{r echo=FALSE}
-hist(TS$logGiving, breaks=30, main="Distribution of Lifetime Giving Amounts", xlab="Log of Giving Amounts", xlim=c(1,7))
+hist(TS$logGiving, breaks=30, main="Distribution of logLifetime Giving Amounts", xlab="Log of Giving Amounts", xlim=c(1,7))
 ```
-
-Since the goal of future modeling will be to predict the likelihood of a person donating money, Lifetime Giving is assigned the role of dependent variable in this study.  The histogram of the log of lifetime giving amounts shows a normal distribution so it is useable as a variable to contrast with other variables.  
+ 
 
 
 ###Years of Giving 
@@ -56,15 +63,16 @@ YOG <- YOG + ggtitle("Years of Giving")
 YOG
 ```
 
-The Years of Giving scatter plot shows some large donors have been giving for between 20 and 40 years.  There are also donors who have given longer, but less overall. It is to be expected that giving over long amounts of time does add up to a large amount over a lifetime, and this plot does show that positive relationship.  
+It is to be expected that giving over long amounts of time adds up to a large amount over a lifetime, and this plot does show that positive relationship.  But there are enough points well above the line to say that many years of giving is not likely to be a requirement for large gifts.
 
-The variable WSU.YEARS.OF.GIVING will be included in the regression model. 
+The variable WSU.YEARS.OF.GIVING will be not included in the regression model. 
 
-A recommendation for future research us that this variable be examined in more detail.  It is not necessarily true that the longer you have given, the more you have given.  Size of the gifts through the years would make a great difference in cumulative giving, for example.
+A recommendation for future research is that this variable be examined in more detail.  It is not necessarily true that the longer you have given, the more you have given.  Size of the gifts through the years would make a great difference in cumulative giving, for example.
 
 
 ###Number of relationships  
 
+Relationships in the donor database include parents, grandparents, aunts, uncles, siblings, as well as children who have also attended school here.  
 ```{r echo=FALSE}
 NOR <- ggplot(TS, aes(x=Number.of.relationships, y=logGiving, group=Number.of.relationships))+geom_boxplot()
 NOR <- NOR + scale_x_continuous(name="Number of Relationships") + scale_y_continuous(name = "Log of Lifetime Giving")
@@ -72,9 +80,9 @@ NOR <- NOR + ggtitle("Relationships")
 NOR
 ```
 
-This plot seems to indicate a correlation between lifetime giving and a low to moderate number of other family members who attended the university. Relationships in the donor database include parents, grandparents, aunts, uncles, siblings, as well as children. 
+This plot seems to indicate a correlation between lifetime giving and a low to moderate number of other family members who attended the university.  
 
-The variable Number.of.Relationships will be included in the regression model since it seems to have a relationship to giving based Kendall's rank correlation. 
+The variable Number.of.Relationships will be included in the regression model since it seems to have a relationship to giving based Kendall's rank correlation. Kendall's correlation was used here because it deals better with ties than Spearman's correlation. Attempting to use Spearman resulted in an error "Cannot compute exact p-value with ties". 
 
 ```{r}
 NoR.COR <- cor.test(TS$Number.of.relationships, TS$logGiving, method = "kendall")
@@ -87,7 +95,7 @@ The "Relationships" variable would be easier to understand in terms of donors if
 
 ###Assets
 
-As with Lifetime Giving, the Asset variable was log transformedtransformed and the summary statistics are:  
+As with Lifetime Giving, the Asset variable was log transformed and the summary statistics are:  
 
 ```{r echo=FALSE}
 TS$logAssets <- log10(TS$ASSETS)
@@ -98,17 +106,7 @@ assets <- assets + ggtitle("Assets")
 assets
 ```
 
-There are a couple of interesting things going on in this plot.  The large mass in the center of the graph does not show any relationship between having assets and lifetime giving.  The solid line on the left of giving by those with no known assets and no giving could be a data collection issue, since asset data has not been collected for people who have given nothing or small amounts.  The data will be subsetted to exclude them and plotted again.  
-
-```{r}
-TS4 <- subset(TS, ASSETS > 0 & WSU.LIFETIME.GIVING > 1000)
-subassets <- ggplot(TS4, aes(x=logAssets,y=logGiving))+geom_jitter()+ stat_smooth(method="lm", col="red")+ theme(panel.background = element_rect(fill = "grey95"),panel.grid.major = element_line(colour = "grey40"))
-subassets <- subassets + scale_x_continuous(name="Log of Known Assets") + scale_y_continuous(name = "Log of Lifetime Giving")
-subassets <- subassets + ggtitle("Subset with Known Assets")
-subassets
-```
-
-Removing the records without assets data and with less than $1,000 giving results still shows a negative relationship, and there are quite a few points well away from the regression line that correspond to high giving amounts. 
+There are a couple of interesting things going on in this plot.  The large mass in the center of the graph does not show any relationship between having assets and lifetime giving.  
 
 In order to try to understand assets as they relate to giving, the Assets variable was used to make five categories:  Highest ($10M and above, 52 observations), Very High ($1M to $9,999,999, 2384 observations), Moderate ($100,000 to $999,999, 2103 observations), Low ($1 to $100,000, 11 observations) and Unknown, 2763 observations.  Returning to the larger dataset (TS), the following box plot was made.  
 
@@ -120,11 +118,9 @@ Assetpl <- Assetpl + ggtitle("Asset Classes")
 Assetpl
 ```
 
-Of interest in this plot are the "Low" and "Unknown" boxes.  Perhaps people with fewer assests are more focused in their giving.  Or perhaps at least some of these people actually have assets that are not captured by this dataset (for example, observation 6222 has the highest giving amount in this dataset but no assets).  It is likely that the highest donors also have the highest assets, but they might also have hidden those assets, so could be contained in the "Unknown" class in the plot.  For this reason, the variable ASSETS will be included in the regression model.  
+Of interest in this plot are the "Low" and "Unknown" boxes.  Perhaps people with fewer assests are more focused in their giving.  Or perhaps at least some of these people actually have assets that are not captured by this dataset (for example, observation 6222 has the highest giving amount in this dataset but no assets).  It is likely that the highest donors also have the highest assets, but they might also have hidden those assets, so could be contained in the "Unknown" class in the plot.  The variable AssetClass will be included in the regression model to see if it is significant in relation to giving.  
 
-Since the easiest asset data to find is the value of real estate, business and investment asset values could be a missing piece of information for some people in the "Low" and "Unknown" categories. Only more research on specific individuals could answer this question. 
-
-But this type of research is generally only done for people who are already major donors. Real estate values are public information obtainable through county assessor records and websites like Zillow, but people often put their real estate into a family or private trust, making it harder to find. Business and investment data are harder to find and generally not public information.  Stock holdings and executive compensation are likewise difficult to value.
+Since the easiest asset data to find is the value of real estate, business and investment asset values could be a missing piece of information for some people in the "Low" and "Unknown" categories. Only more research on specific individuals could answer this question in future work. 
 
 
 ###Velocity and Lifetime Giving
@@ -132,31 +128,32 @@ But this type of research is generally only done for people who are already majo
 Velocity is a measure of the trajectory of recent giving.  Literature on the  subject uses two different methods of calculating velocity.  The first method (the Velocity35Score) sums giving over the most recent three years and divides that number by the sum of giving for the past five years.  The second method (Velocity57Score) sums the most recent five years and divides that by the sum of the most recent seven years.  For the purposes of this study, it is calculated both ways to see which would be best to use in a regression model. 
 
 ```{r echo=FALSE}
-hist(TS4$Velocity35Score, breaks=30, main="Last 3 Years of Giving over Last 5 Years", xlab="Velocity score")
+hist(TS$Velocity35Score, breaks=30, main="Last 3 Years of Giving over Last 5 Years", xlab="Velocity score")
 ```
 
 ```{r echo=FALSE}
-hist(TS4$Velocity57Score, breaks=30, main="Last 5 Years of Giving over Last 7 Years", xlab="Velocity score")
+hist(TS$Velocity57Score, breaks=30, main="Last 5 Years of Giving over Last 7 Years", xlab="Velocity score")
 ```
   
 There is an interesting shift to the right from the first velocity plot to the second even though their shapes are close to the same.  When compared against each other, the Velocity35Score has a positive relationship to the Velocity57Score. 
 
 ```{r, echo=FALSE}
-velocities <- ggplot(TS4, aes(x=Velocity35Score, y=Velocity57Score))+geom_jitter()+ stat_smooth(method="lm", col="red")+ theme(panel.background = element_rect(fill = "grey95"),panel.grid.major = element_line(colour = "grey40"))
+velocities <- ggplot(TS, aes(x=Velocity35Score, y=Velocity57Score))+geom_jitter()+ stat_smooth(method="lm", col="red")+ theme(panel.background = element_rect(fill = "grey95"),panel.grid.major = element_line(colour = "grey40"))
 velocities <- velocities + scale_x_continuous(name="Velocity35Score") + scale_y_continuous(name = "Velocity57Score")
 velocities <- velocities + ggtitle("Comparison of Velocity Scores")
 velocities
 ```
 
-The scatter plot is interesting in that it shows a positive relationship between the scores, but it does not say which one should be included in the regression model. Correlation tests might help.
+The scatter plot is interesting in that it shows a positive relationship between the scores, but it does not say which one should be included in the regression model. Let's check wich one seems to have a higher correlation with lifetime giving using a Spearman's correlation since both varibles are skewed.
 
 ```{r}
 cor.test(TS$WSU.LIFETIME.GIVING, TS$Velocity35Score, method = "spearman")
 cor.test(TS$WSU.LIFETIME.GIVING, TS$Velocity57Score, method = "spearman")
 ```
-The rho value for each velocoty score, contasted against lifetime giving, are quite high.  The Velocity35Score will be included in the regression model since it's r value is slightly better (0.543 versus 0.519 for Velocity57Score).  
+Both variables show a high Spearman rank correlation with lifetime giving.  I will ue the Velocity35Score in the regression model since it's rank score is slightly higher and it has a less skewed distribution than the Velocity57Score.
 
 ###Gender  
+While the mean giving for males is slightly higher than that of females, this box plot does not show a great difference in giving related to gender. 
 
 ```{r echo=FALSE}
 GTC <- ggplot(TS, aes(x=Gender, y=logGiving, group=Gender))+geom_boxplot()
@@ -165,56 +162,15 @@ GTC <- GTC + ggtitle("Gender")
 GTC
 ```
 
-This box plot does not show a great difference in giving related to gender.  Since it is unlikely to have any predidictive value for giving, the variable GENDER will not be included in the regression model.  
-
-
-###Participation in a sport or a Greek chapter while a student   
-
-This variable only applies to alumni since it refers to activities while a student. A new dataset, TS6, restricts to alumni only, who have assets and have given more than $1000.  This score is computed by assigning one "point" for membership in a Greek chapter or sports club, then totalling the points.    
-```{r}
-TS6 <-subset(TS, ASSETS > 0 & WSU.LIFETIME.GIVING > 1000 & AlumniCode > 0)
-```
-
-```{r echo=FALSE}
-TS6$ParticipationClass <- factor(TS6$ParticipationClass, levels= c("Sport", "Greek", "Both", "None"))
-PART <- ggplot(TS6, aes(x=ParticipationClass, y=logGiving, group=ParticipationClass))+geom_boxplot()
-PART <- PART + scale_y_continuous(name = "Log of Lifetime Giving")
-PART + ggtitle("Alumni Participation")
-```
-
-There does not seem to be much difference between the medians of the categories based on this box plot.  Welch's Two Sample t-test was performed on these variables to see if there was a meaningful difference between giving from those who participated in sports and those who joined a Greek chapter.    
-```{r}
-Spt = TS6$SportCode == 1
-PlayedSport=TS6[Spt,]$WSU.LIFETIME.GIVING  #Lifetime Giving by those who played Sports
-
-NSpt = TS6$SportCode ==0
-NoSport=TS6[NSpt,]$WSU.LIFETIME.GIVING #Lifetime Giving by those who didn't play Sports
-
-t.test(PlayedSport, NoSport)
-```
-
-
-```{r}
-Grk = TS6$GreekCode == 1
-Greek=TS6[Grk,]$WSU.LIFETIME.GIVING  #Lifetime Giving by those who went Greek
-
-NoGrk = TS6$GreekCode == 0
-GDI=TS6[NoGrk,]$WSU.LIFETIME.GIVING  #Lifetime Giving by non-Greeks
-
-t.test(Greek, GDI)
-```
-
-
-```{r}
-t.test(PlayedSport, Greek)
-```
-
-Given the differences in the means of these samples and the high p-values, both GreekCode and SportCode should be part of the regression model. This result is in agreement with literature discussing the effect on affinity on giving. People who participate in campus activities often seem to remain connected to the school and support it financially.
+Since it is unlikely to have any predidictive value for giving, the variable GENDER will not be included in the regression model.  
 
 
 ###Types of donors in the sample  
 
-There are far more Alumni (AL) in the total sample than any other type of donor. The next largest group, Friend (FR), is someone who has a connection with the school through giving or other means, but who was never a student. Former Parents (FP) are the third largest group in this set. They are parents of a current or former student, but are not alumni.    
+There are far more Alumni (AL) in the total sample than any other type of donor. The next largest group, Friend (FR), is someone who has a connection with the school through giving or other means, but who was never a student. Former Parents (FP) are the third largest group in this set. They are parents of a current or former student, but are not alumni themselves.  
+
+It seems straightforward to say that alumni make up our largest giving group, since they represent the bulk of the sample regardless of giving history.  By themselves, alumni make up 63.8% of the TS sample.  Combined with friends, they account for 87.1% of the sample.    
+
 ```{r}
 relation.freq = table(TS$RECORD.TYPE.CODE)
 relation.freq
@@ -256,20 +212,67 @@ AllElseGiving=TS[NoAlum,]$WSU.LIFETIME.GIVING  #Lifetime Giving by non-alumni
 t.test(AlumGiving, AllElseGiving)
 ```
 
-It seems straightforward to say that alumni make up our largest giving group, since they represent the bulk of the sample regardless of giving history.  By themselves, alumni make up 63.8% of the TS sample.  Combined with friends, they account for 87.1% of the sample.  "Friend" is defined as someone who has donated or done business with the university but who did not go to school here.
+Given the high p-value, the null hypotheses cannot rejected.  
 
-The AlumniCode variable will be included in the regression model.  It is one of the easiest datapoints to gather about a potential donor and might be useful in understanding why a potential donor might give when combined with other variables. 
+Alumni status might not appear to be influencing giving according to this test, but the AlumniCode variable will be included in the regression model even though other variables may turn out to be more significant.  
+
+This is one of the easiest datapoints to gather about a potential donor and might be useful in understanding why a potential donor might give when combined with other variables in future analyses. 
 
 
-###Logistic Regression Model
+###Participation in a sport or a Greek chapter while a student   
 
-Logistic regression was chosen because monetary values like WSU.LIFETIME.GIVING need to be handled as a log in order to contrast it with other variables.  
+This variable only applies to alumni since it refers to activities while a student. A new dataset, TS6, restricts the sample to alumni only.  This score is computed by assigning one "point" for membership in a Greek chapter or sports club, then totalling the points.    
+```{r}
+TS6 <-subset(TS, AlumniCode > 0)
+```
 
-When these seven variables are included: WSU.LIFETIME.GIVING (the independent variable), WSU.YEARS.OF.GIVING, AssetClass,  Number.of.relationships, AlumniCode, SportCode, GreekCode, Velocity35Score, in a logistic regression model, then AlumniCode along with WSU.YEARS.OF.GIVING, and Number.of.relationships are significant in relation to Lifetime Giving.  The p-value is less than 0.05 means the null hypothesis can be rejected.  
+```{r echo=FALSE}
+TS6$ParticipationClass <- factor(TS6$ParticipationClass, levels= c("Sport", "Greek", "Both", "None"))
+PART <- ggplot(TS6, aes(x=ParticipationClass, y=logGiving, group=ParticipationClass))+geom_boxplot()
+PART <- PART + scale_y_continuous(name = "Log of Lifetime Giving")
+PART + ggtitle("Alumni Participation")
+```
+
+There does not seem to be much difference between the medians of the categories based on this box plot.  Welch's Two Sample t-test was performed on these variables to see if there was a meaningful difference between giving from those who participated in sports and those who joined a Greek chapter.    
+```{r}
+Spt = TS6$SportCode == 1
+PlayedSport=TS6[Spt,]$WSU.LIFETIME.GIVING  #Lifetime Giving by those who played Sports
+
+NSpt = TS6$SportCode ==0
+NoSport=TS6[NSpt,]$WSU.LIFETIME.GIVING #Lifetime Giving by those who didn't play Sports
+
+t.test(PlayedSport, NoSport)
+```
+
 
 ```{r}
-AssetClass2 <- as.numeric(TS$AssetClass)
-RegMod <-glm(WSU.LIFETIME.GIVING~WSU.YEARS.OF.GIVING+AssetClass+Number.of.relationships+AlumniCode+SportCode+GreekCode+Velocity35Score,data=TS)
+Grk = TS6$GreekCode == 1
+Greek=TS6[Grk,]$WSU.LIFETIME.GIVING  #Lifetime Giving by those who went Greek
+
+NoGrk = TS6$GreekCode == 0
+GDI=TS6[NoGrk,]$WSU.LIFETIME.GIVING  #Lifetime Giving by non-Greeks
+
+t.test(Greek, GDI)
+```
+
+
+```{r}
+t.test(PlayedSport, Greek)
+```
+
+Given the high p-values, the null hypotheses cannot rejected. Both GreekCode and SportCode should not be expected to have a predictive influence on lifetime giving. But using both variables in the regression model is in agreement with literature discussing the effect on affinity on giving. People who participate in campus activities often seem to remain connected to the school and support it financially.  The will be included, but are expected to show a lesser significance than other variables.
+
+
+###Regression Model
+
+All of the data exploration has lead to deciding which variables are best suited for inclusion in a regression model.  
+
+These seven variables are included: logGiving (the dependent variable),  Number.of.relationships, AlumniCode, SportCode, GreekCode, Velocity35Score, and AssetClass, in a regression model.
+
+```{r}
+TS$AssetClass2 <- as.numeric(TS$AssetClass)
+TS$logGiving[which(!is.finite(TS$logGiving))] = NA
+RegMod <-lm(logGiving~Number.of.relationships+AlumniCode+SportCode+GreekCode+Velocity35Score+AssetClass2, data=TS)
 
 summary(RegMod)
 
